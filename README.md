@@ -1,4 +1,6 @@
-# Architect's Build Lab, Episode 1: IT onboarding agent
+# build-lab-ep01-it-onboarding-agent
+
+**Architect's Build Lab, Episode 1: IT onboarding agent**
 
 ![Architect's Build Lab, Episode 1](docs/images/social-preview.png)
 
@@ -50,7 +52,8 @@ The idea is one agent, one tool, one flow and one plugin. The agent decides *wha
 ## Build
 
 ```bash
-cd src/OnboardingAgent
+git clone https://github.com/arihantexplains/build-lab-ep01-it-onboarding-agent.git
+cd build-lab-ep01-it-onboarding-agent/src/OnboardingAgent
 sn -k OnboardingAgent.snk      # once; the key file is git-ignored, keep it private
 dotnet build -c Release
 ```
