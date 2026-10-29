@@ -9,6 +9,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class ListGroupMembers
     {
+        /// <summary>Reads up to top members of the group and names the in-scope users among them.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: group (name or ID) and top.</param>
+        /// <returns>The ActionResult sent back to the agent, with the named members, a count of the others and whether more exist.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = ListGroupMembersParameters.Parse(parameters);

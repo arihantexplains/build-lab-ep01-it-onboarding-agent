@@ -3,11 +3,15 @@ using OnboardingAgent.Functions.Parameters;
 namespace OnboardingAgent.Functions
 {
     /// <summary>
-    /// Creates an account inside the administrative unit. With managerId the manager is set and receives the temporary
+    /// Creates a user inside the administrative unit. With managerId the manager is set and receives the temporary
     /// password; without it the password is discarded and ResetPassword issues one later.
     /// </summary>
     public static class CreateUser
     {
+        /// <summary>Creates the user, adds them to the administrative unit and, when a manager is given, sets the manager and emails them the temporary password.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: displayName, givenName, surname, an optional managerId and other profile fields.</param>
+        /// <returns>The ActionResult sent back to the agent, with one step per action. The user is still created when a later step fails.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = NewUserParameters.Parse(parameters, ctx.Config);

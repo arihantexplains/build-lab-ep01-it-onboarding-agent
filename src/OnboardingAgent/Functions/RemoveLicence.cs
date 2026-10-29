@@ -10,6 +10,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class RemoveLicence
     {
+        /// <summary>Removes the requested licences that are assigned directly to the user.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId and skus (part numbers or SKU IDs).</param>
+        /// <returns>The ActionResult sent back to the agent, listing the licences removed and those left because they are not assigned directly.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = RemoveLicenceParameters.Parse(parameters);
@@ -37,6 +41,10 @@ namespace OnboardingAgent.Functions
                 + (notDirect.Count > 0 ? " Not assigned directly, so left alone: " + string.Join(", ", notDirect) + "." : string.Empty), data);
         }
 
+        /// <summary>Removes the given licences from the user in one Graph call.</summary>
+        /// <param name="ctx">The request context.</param>
+        /// <param name="userId">The object ID of the user.</param>
+        /// <param name="skuIds">The SKU IDs to remove. They must be assigned directly.</param>
         public static void Remove(ActionContext ctx, string userId, IList<string> skuIds)
         {
             ctx.Graph.Post("/users/" + userId + "/assignLicense",

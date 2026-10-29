@@ -7,6 +7,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class RemoveManager
     {
+        /// <summary>Removes the user's manager. Nothing changes when the user has none.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId.</param>
+        /// <returns>The ActionResult sent back to the agent, naming the previous manager when they are in the managed scope.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = UserTargetParameters.Parse(parameters);

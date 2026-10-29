@@ -2,10 +2,15 @@ using OnboardingAgent.Functions.Parameters;
 
 namespace OnboardingAgent.Functions
 {
+    /// <summary>Reports whether a user can sign in, when they last signed in and when their password last changed.</summary>
     public static class GetSignInStatus
     {
         private const string BaseSelect = "id,displayName,userPrincipalName,accountEnabled,createdDateTime,lastPasswordChangeDateTime";
 
+        /// <summary>Reads the sign-in status. When signInActivity is not available to the app, only the basic properties are returned.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId.</param>
+        /// <returns>The ActionResult sent back to the agent, with the sign-in dates and whether sign-in activity was available.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = UserTargetParameters.Parse(parameters);

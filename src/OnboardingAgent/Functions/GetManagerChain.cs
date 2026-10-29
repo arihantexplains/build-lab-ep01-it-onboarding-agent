@@ -9,6 +9,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class GetManagerChain
     {
+        /// <summary>Follows the user's manager, then that manager's manager, up to maxDepth levels.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId and maxDepth.</param>
+        /// <returns>The ActionResult sent back to the agent, with each manager by level and the reason the walk stopped.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = GetManagerChainParameters.Parse(parameters);

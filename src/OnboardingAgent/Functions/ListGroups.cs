@@ -4,8 +4,13 @@ using OnboardingAgent.Functions.Parameters;
 
 namespace OnboardingAgent.Functions
 {
+    /// <summary>Lists managed groups, optionally only those whose names start with given text. The required prefix is always applied.</summary>
     public static class ListGroups
     {
+        /// <summary>Finds in-scope groups whose names start with the required prefix plus any extra text given.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: an optional nameStartsWith and top.</param>
+        /// <returns>The ActionResult sent back to the agent, with each group's type and whether this tool may change its membership.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = ListGroupsParameters.Parse(parameters);

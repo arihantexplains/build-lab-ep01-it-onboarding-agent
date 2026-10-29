@@ -9,7 +9,7 @@ Operations marked **approval** only run with an `ApprovalId`, which the flow sup
 | Operation | What it does | Parameters |
 |---|---|---|
 | `OnboardUser` | New joiner in one call: create, set manager, licences, groups (listed or cloned), temporary password to the manager. Preview by default. | `displayName`, `givenName`, `surname`, `department`, `jobTitle`, `managerId`, `cloneFromUserId` or `groups`, `skus`, `previewOnly` |
-| `CreateUser` | Creates the account only. With `managerId` the manager gets the temporary password; without it the password is discarded. | `displayName`, `givenName`, `surname`, `department`, `jobTitle`, `managerId` |
+| `CreateUser` | Creates the user only. With `managerId` the manager gets the temporary password; without it the password is discarded. | `displayName`, `givenName`, `surname`, `department`, `jobTitle`, `managerId` |
 | `CloneAccess` | Copies direct group memberships from one user to another, skipping dynamic, role-assignable and protected groups. Preview by default. | `sourceUserId`, `targetUserId`, `previewOnly` |
 | `AssignLicence` | Assigns licences by SKU part number or ID. | `userId`, `skus` |
 | `SendEmail` | Sends from the configured mailbox to internal recipients only, with a footer naming the requester. | `to`, `subject`, `body` |

@@ -11,6 +11,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class AuditQuery
     {
+        /// <summary>Reads Entra ID directory audit events for a user, or this tool's action log in Dataverse when source is "log".</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: source ("graph" or "log"), userId for graph, optional actionName and requestedBy for log, days and top.</param>
+        /// <returns>The ActionResult sent back to the agent, with the matching events or log entries.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = AuditQueryParameters.Parse(parameters);

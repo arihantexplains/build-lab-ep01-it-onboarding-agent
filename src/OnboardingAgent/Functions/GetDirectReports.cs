@@ -11,6 +11,10 @@ namespace OnboardingAgent.Functions
     {
         private const int MaxReports = 500;
 
+        /// <summary>Lists the user's direct reports that are in the managed scope, sorted by name.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId of the manager.</param>
+        /// <returns>The ActionResult sent back to the agent, with the named reports and how many others are outside the managed scope.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = UserTargetParameters.Parse(parameters);

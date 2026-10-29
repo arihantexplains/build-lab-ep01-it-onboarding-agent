@@ -1,5 +1,6 @@
 namespace OnboardingAgent
 {
+    /// <summary>Per-call settings for <see cref="GraphClient"/>: retry behaviour, consistency header and the 404 message.</summary>
     public sealed class GraphCallOptions
     {
         /// <summary>Retry 404 and "reference not present" errors briefly, for objects created moments ago.</summary>

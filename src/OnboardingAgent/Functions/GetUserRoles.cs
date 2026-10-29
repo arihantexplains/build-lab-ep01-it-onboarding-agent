@@ -10,6 +10,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class GetUserRoles
     {
+        /// <summary>Lists the user's directory role assignments and the scope of each.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId.</param>
+        /// <returns>The ActionResult sent back to the agent, with each role, its scope and its assignment ID.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = UserTargetParameters.Parse(parameters);

@@ -7,6 +7,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class EnableUser
     {
+        /// <summary>Allows the user to sign in again. Nothing changes when they can already sign in.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId.</param>
+        /// <returns>The ActionResult sent back to the agent, saying whether sign-in was turned back on.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = UserTargetParameters.Parse(parameters);

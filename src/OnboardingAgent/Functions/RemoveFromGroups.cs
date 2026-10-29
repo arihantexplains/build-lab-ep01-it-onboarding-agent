@@ -4,10 +4,14 @@ using OnboardingAgent.Functions.Parameters;
 namespace OnboardingAgent.Functions
 {
     /// <summary>
-    /// Every group is checked before any is changed, so one ineligible group refuses the whole request.
+    /// Removes a managed user from one or more managed groups. Every group is checked before any is changed, so one ineligible group refuses the whole request.
     /// </summary>
     public static class RemoveFromGroups
     {
+        /// <summary>Removes the user from each requested group, noting groups they were not in.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId and groups (group names or IDs).</param>
+        /// <returns>The ActionResult sent back to the agent, with one step per group.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = GroupChangeParameters.Parse(parameters);

@@ -11,6 +11,7 @@ namespace OnboardingAgent
     /// </summary>
     public static class XlsxBuilder
     {
+        /// <summary>MIME type for .xlsx files, used when uploading the workbook.</summary>
         public const string ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
         private const int MaxCellLength = 32767;
@@ -50,6 +51,11 @@ namespace OnboardingAgent
             "<cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles>" +
             "</styleSheet>";
 
+        /// <summary>Builds the workbook. Every cell is written as text, empty values are left blank and long values are cut to the Excel cell limit.</summary>
+        /// <param name="sheetName">Name of the single worksheet.</param>
+        /// <param name="headers">Header row, shown in bold and frozen.</param>
+        /// <param name="rows">Data rows, one string per column.</param>
+        /// <returns>The .xlsx file as bytes.</returns>
         public static byte[] Build(string sheetName, IList<string> headers, IEnumerable<IList<string>> rows)
         {
             using (var buffer = new MemoryStream())

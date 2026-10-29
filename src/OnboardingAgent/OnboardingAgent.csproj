@@ -8,6 +8,8 @@
     <Version>1.0.0.0</Version>
     <FileVersion>1.1.0.0</FileVersion>
     <Deterministic>true</Deterministic>
+    <!-- XML docs on every public member; a missing one is a build warning (CS1591). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <!-- Classic plug-in assemblies must be strong-named. Create the key once with: sn -k OnboardingAgent.snk -->

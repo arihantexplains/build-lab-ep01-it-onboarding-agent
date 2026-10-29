@@ -14,6 +14,11 @@ namespace OnboardingAgent
         private readonly DirectoryService _directory;
         private readonly ITracingService _trace;
 
+        /// <summary>Creates the validator for one call.</summary>
+        /// <param name="config">Settings with the prefix, administrative unit and allowed lists.</param>
+        /// <param name="graph">Client for Microsoft Graph calls.</param>
+        /// <param name="directory">Lookups for users and groups.</param>
+        /// <param name="trace">Plug-in trace log.</param>
         public Validator(Config config, GraphClient graph, DirectoryService directory, ITracingService trace)
         {
             _config = config;
@@ -22,6 +27,9 @@ namespace OnboardingAgent
             _trace = trace;
         }
 
+        /// <summary>Refuses a high-risk action that has no approval ID, or one that is too long or contains control characters.</summary>
+        /// <param name="approvalId">The approval reference sent with the request.</param>
+        /// <param name="actionName">Action name used in the error message.</param>
         public static void RequireApproval(string approvalId, string actionName)
         {
             if (string.IsNullOrWhiteSpace(approvalId))
@@ -35,11 +43,16 @@ namespace OnboardingAgent
             }
         }
 
+        /// <summary>True when the display name carries the required prefix.</summary>
         public bool InScope(string displayName)
         {
             return _config.HasRequiredPrefix(displayName);
         }
 
+        /// <summary>Refuses an object whose display name lacks the required prefix.</summary>
+        /// <param name="displayName">Display name to check.</param>
+        /// <param name="kind">Object kind for the message, such as User or Group.</param>
+        /// <param name="identifier">How the object is named in the message.</param>
         public void RequirePrefix(string displayName, string kind, string identifier)
         {
             if (!InScope(displayName))
@@ -49,6 +62,8 @@ namespace OnboardingAgent
             }
         }
 
+        /// <summary>Finds a user and checks it is in scope for reading.</summary>
+        /// <param name="idOrUpn">Object ID, UPN or display name.</param>
         public UserInfo ReadableUser(string idOrUpn)
         {
             var user = _directory.GetUser(idOrUpn);
@@ -56,6 +71,8 @@ namespace OnboardingAgent
             return user;
         }
 
+        /// <summary>Finds a user and checks it may be changed: in scope, in the administrative unit and not an administrator.</summary>
+        /// <param name="idOrUpn">Object ID, UPN or display name.</param>
         public UserInfo WritableUser(string idOrUpn)
         {
             var user = ReadableUser(idOrUpn);
@@ -64,6 +81,8 @@ namespace OnboardingAgent
             return user;
         }
 
+        /// <summary>Finds a group and checks it is in scope for reading.</summary>
+        /// <param name="idOrName">Group object ID or display name.</param>
         public GroupInfo ReadableGroup(string idOrName)
         {
             var group = _directory.GetGroup(idOrName);
@@ -71,6 +90,8 @@ namespace OnboardingAgent
             return group;
         }
 
+        /// <summary>Finds a group and checks it may be changed, refusing protected, dynamic, role-assignable, synced and Exchange-managed groups.</summary>
+        /// <param name="idOrName">Group object ID or display name.</param>
         public GroupInfo WritableGroup(string idOrName)
         {
             var group = ReadableGroup(idOrName);
@@ -83,6 +104,7 @@ namespace OnboardingAgent
             return group;
         }
 
+        /// <summary>Refuses a user who is not a member of the managed administrative unit.</summary>
         public void RequireInAdminUnit(UserInfo user)
         {
             try
@@ -115,6 +137,7 @@ namespace OnboardingAgent
             }
         }
 
+        /// <summary>Refuses a recipient with no mailbox, since the temporary password could not be delivered.</summary>
         public void RequireMailbox(UserInfo user)
         {
             if (string.IsNullOrEmpty(user.Mail))
@@ -123,6 +146,8 @@ namespace OnboardingAgent
             }
         }
 
+        /// <summary>Refuses an email address that is malformed or outside the configured domain and its subdomains.</summary>
+        /// <param name="address">The recipient address to check.</param>
         public void RequireInternalRecipient(string address)
         {
             var at = address.LastIndexOf('@');

@@ -10,6 +10,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class AssignRole
     {
+        /// <summary>Checks the approval and the allow-list, then assigns the role to the user, scoped to the administrative unit.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId and role (a role name or role definition ID).</param>
+        /// <returns>The ActionResult sent back to the agent, with the assignment ID. A role the user already holds counts as success.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             Validator.RequireApproval(ctx.ApprovalId, "AssignRole");
@@ -56,6 +60,10 @@ namespace OnboardingAgent.Functions
             return ActionResult.Ok("Assigned " + roleName + " to " + user.DisplayName + ", scoped to the administrative unit.", data);
         }
 
+        /// <summary>Finds a directory role definition by its ID or exact display name, or throws a ValidationException when there is none.</summary>
+        /// <param name="ctx">The request context.</param>
+        /// <param name="role">A role definition ID or display name.</param>
+        /// <returns>The role definition with id, displayName and templateId.</returns>
         public static JsonObject ResolveRole(ActionContext ctx, string role)
         {
             Guid id;

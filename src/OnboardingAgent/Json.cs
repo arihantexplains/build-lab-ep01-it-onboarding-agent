@@ -15,6 +15,10 @@ namespace OnboardingAgent
     {
         private const int MaxDepth = 64;
 
+        /// <summary>Parses any JSON value.</summary>
+        /// <param name="text">The JSON text.</param>
+        /// <returns>A JsonObject, JsonArray, string, long, double, bool or null.</returns>
+        /// <exception cref="FormatException">The text is null or is not valid JSON.</exception>
         public static object Parse(string text)
         {
             if (text == null)
@@ -25,6 +29,10 @@ namespace OnboardingAgent
             return new JsonReader(text).ReadDocument();
         }
 
+        /// <summary>Parses text that must hold a JSON object. Blank text gives an empty object.</summary>
+        /// <param name="text">The JSON text.</param>
+        /// <returns>The parsed object.</returns>
+        /// <exception cref="FormatException">The text is not valid JSON or is not an object.</exception>
         public static JsonObject ParseObject(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -41,6 +49,9 @@ namespace OnboardingAgent
             return result;
         }
 
+        /// <summary>Writes a value as compact JSON. Dictionaries become objects, other sequences become arrays and dates become UTC strings.</summary>
+        /// <param name="value">The value to write.</param>
+        /// <returns>The JSON text.</returns>
         public static string Serialize(object value)
         {
             var builder = new StringBuilder();

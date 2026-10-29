@@ -9,6 +9,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class SendEmail
     {
+        /// <summary>Checks every recipient is internal, adds the footer and sends the message.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: to, cc, subject, body and isHtml.</param>
+        /// <returns>The ActionResult sent back to the agent, with the recipients, subject and sending mailbox.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = SendEmailParameters.Parse(parameters);

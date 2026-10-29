@@ -18,22 +18,34 @@ namespace OnboardingAgent
             RequestId = requestId;
         }
 
+        /// <summary>HTTP status code returned by Graph.</summary>
         public int StatusCode { get; }
 
+        /// <summary>Graph error code, such as Request_ResourceNotFound, or null.</summary>
         public string Code { get; }
 
+        /// <summary>Raw Graph error message, cut to 300 characters, or null.</summary>
         public string GraphMessage { get; }
 
+        /// <summary>Graph request ID for support cases, or null.</summary>
         public string RequestId { get; }
 
+        /// <summary>True when an add-member call failed because the user is already a member.</summary>
         public bool IsAlreadyMember => StatusCode == 400 && Mentions(GraphMessage, "added object references already exist");
 
+        /// <summary>True when the change clashes with existing data, such as a duplicate user principal name.</summary>
         public bool IsConflict => StatusCode == 409 || (StatusCode == 400 && Mentions(GraphMessage, "conflicting object"));
 
+        /// <summary>True when the error looks like a newly created object has not reached every directory replica yet.</summary>
         public bool IsReplicationDelay => StatusCode == 404
             || (StatusCode == 400 && (string.Equals(Code, "Request_ResourceNotFound", StringComparison.OrdinalIgnoreCase)
                 || Mentions(GraphMessage, "does not exist or one of its queried reference-property objects are not present")));
 
+        /// <summary>Builds the exception from a failed Graph response, pulling out the error code, message and request ID.</summary>
+        /// <param name="statusCode">HTTP status code.</param>
+        /// <param name="body">Response body. Non-JSON bodies are ignored.</param>
+        /// <param name="notFoundMessage">Message to use for 404, or null for the generic one.</param>
+        /// <returns>An exception with a friendly message for the caller.</returns>
         public static GraphException FromResponse(int statusCode, string body, string notFoundMessage)
         {
             string code = null;

@@ -12,18 +12,27 @@ namespace OnboardingAgent
         private readonly ITracingService _trace;
         private readonly List<string> _failures = new List<string>();
 
+        /// <summary>Creates an empty step log.</summary>
+        /// <param name="trace">Trace log that receives full details of unexpected errors.</param>
         public StepLog(ITracingService trace)
         {
             _trace = trace;
             Steps = new JsonArray();
         }
 
+        /// <summary>Recorded steps, each with step name, status and detail.</summary>
         public JsonArray Steps { get; }
 
+        /// <summary>True when any step failed.</summary>
         public bool HasFailures => _failures.Count > 0;
 
+        /// <summary>All failure messages joined into one line, each prefixed with its step name.</summary>
         public string FailureSummary => string.Join(" ", _failures);
 
+        /// <summary>Runs one step and records it as done or failed, so a failure does not stop the remaining steps.</summary>
+        /// <param name="name">Step name shown in the result.</param>
+        /// <param name="action">The work to do. Returns the detail text for a successful step.</param>
+        /// <returns>True when the step succeeded.</returns>
         public bool Run(string name, Func<string> action)
         {
             try
@@ -44,11 +53,17 @@ namespace OnboardingAgent
             }
         }
 
+        /// <summary>Records a step as done.</summary>
+        /// <param name="name">Step name shown in the result.</param>
+        /// <param name="detail">What the step did.</param>
         public void Done(string name, string detail)
         {
             Add(name, "done", detail);
         }
 
+        /// <summary>Records a step as skipped, for example when there was nothing to change.</summary>
+        /// <param name="name">Step name shown in the result.</param>
+        /// <param name="reason">Why the step was skipped.</param>
         public void Skip(string name, string reason)
         {
             Add(name, "skipped", reason);

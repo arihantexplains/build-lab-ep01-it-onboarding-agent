@@ -5,6 +5,7 @@ using OnboardingAgent.Functions;
 
 namespace OnboardingAgent
 {
+    /// <summary>Maps action names to their handler functions and marks which actions need an approval.</summary>
     public static class ActionRouter
     {
         private static readonly Dictionary<string, Func<ActionContext, JsonObject, ActionResult>> Actions =
@@ -55,13 +56,20 @@ namespace OnboardingAgent
             "OffboardUser"
         };
 
+        /// <summary>Every supported action name, sorted, for listing in error messages.</summary>
         public static IEnumerable<string> ActionNames => Actions.Keys.OrderBy(name => name, StringComparer.Ordinal);
 
+        /// <summary>Looks up the handler for an action name, ignoring case.</summary>
+        /// <param name="actionName">The requested action. Null is treated as unknown.</param>
+        /// <param name="handler">The handler when found, otherwise null.</param>
+        /// <returns>True when the action exists.</returns>
         public static bool TryGet(string actionName, out Func<ActionContext, JsonObject, ActionResult> handler)
         {
             return Actions.TryGetValue(actionName ?? string.Empty, out handler);
         }
 
+        /// <summary>True for high-risk actions (password reset, role changes, session revoke, disable, offboard) that must carry an approval ID.</summary>
+        /// <param name="actionName">The requested action.</param>
         public static bool RequiresApproval(string actionName)
         {
             return ApprovalRequired.Contains(actionName);

@@ -11,6 +11,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class OffboardUser
     {
+        /// <summary>Checks the approval, then blocks sign-in and runs the optional leaver steps.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId, revokeSessions, removeGroups and removeLicences.</param>
+        /// <returns>The ActionResult sent back to the agent, with one step per action. The user object is kept.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             Validator.RequireApproval(ctx.ApprovalId, "OffboardUser");

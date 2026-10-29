@@ -12,15 +12,25 @@ namespace OnboardingAgent
     /// </summary>
     public sealed class Config
     {
+        /// <summary>Environment variable holding the Microsoft Entra tenant ID.</summary>
         public const string TenantIdVariable = "ab_GraphTenantId";
+        /// <summary>Environment variable holding the app registration client ID.</summary>
         public const string ClientIdVariable = "ab_GraphClientId";
+        /// <summary>Environment variable holding the client secret, either as text or as a Key Vault secret.</summary>
         public const string ClientSecretVariable = "ab_GraphClientSecret";
+        /// <summary>Environment variable holding the mailbox that sends email.</summary>
         public const string SenderMailboxVariable = "ab_SenderMailbox";
+        /// <summary>Environment variable holding the SharePoint site ID where reports are saved. Optional.</summary>
         public const string ReportsSiteIdVariable = "ab_ReportsSiteId";
+        /// <summary>Environment variable holding the ID of the administrative unit whose users may be changed.</summary>
         public const string AdminUnitIdVariable = "ab_AdminUnitId";
+        /// <summary>Environment variable holding the domain for new UPNs and allowed email recipients.</summary>
         public const string UpnDomainVariable = "ab_UpnDomain";
+        /// <summary>Environment variable holding the display name prefix that marks users and groups as in scope.</summary>
         public const string RequiredNamePrefixVariable = "ab_RequiredPrefix";
+        /// <summary>Environment variable listing the directory roles AssignRole may grant.</summary>
         public const string AssignableRolesVariable = "ab_AssignableRoles";
+        /// <summary>Environment variable listing groups that must never be changed.</summary>
         public const string ProtectedGroupsVariable = "ab_ProtectedGroups";
 
         private const int SecretType = 100000005;
@@ -36,20 +46,28 @@ namespace OnboardingAgent
         {
         }
 
+        /// <summary>Microsoft Entra tenant ID used to request tokens.</summary>
         public string TenantId { get; private set; }
 
+        /// <summary>App registration client ID used to request tokens.</summary>
         public string ClientId { get; private set; }
 
+        /// <summary>Client secret used to request tokens. Kept in memory only and never traced.</summary>
         public string ClientSecret { get; private set; }
 
+        /// <summary>Mailbox that sends email on behalf of the tool.</summary>
         public string SenderMailbox { get; private set; }
 
+        /// <summary>SharePoint site ID where reports are saved, or null when not set.</summary>
         public string ReportsSiteId { get; private set; }
 
+        /// <summary>ID of the administrative unit whose members the tool may change.</summary>
         public string AdminUnitId { get; private set; }
 
+        /// <summary>Lower case domain, without the at sign, for new UPNs and allowed email recipients.</summary>
         public string UpnDomain { get; private set; }
 
+        /// <summary>Display name prefix that puts a user or group in scope. Never empty.</summary>
         public string RequiredNamePrefix { get; private set; }
 
         /// <summary>Role display names, template IDs or definition IDs that AssignRole may grant.</summary>
@@ -58,6 +76,10 @@ namespace OnboardingAgent
         /// <summary>Group IDs or display names that are never changed.</summary>
         public ReadOnlyCollection<string> ProtectedGroups { get; private set; }
 
+        /// <summary>Returns the settings for an organization, reloading them when the cached copy is older than five minutes.</summary>
+        /// <param name="service">Organization service used to read the environment variables.</param>
+        /// <param name="organizationId">The Dataverse organization the call runs in.</param>
+        /// <returns>The loaded settings.</returns>
         public static Config Get(IOrganizationService service, Guid organizationId)
         {
             lock (CacheLock)
@@ -78,11 +100,16 @@ namespace OnboardingAgent
             return fresh;
         }
 
+        /// <summary>True when the display name starts with the required prefix (case-sensitive).</summary>
+        /// <param name="displayName">Display name to check. Null is never in scope.</param>
         public bool HasRequiredPrefix(string displayName)
         {
             return displayName != null && displayName.StartsWith(RequiredNamePrefix, StringComparison.Ordinal);
         }
 
+        /// <summary>True when the group's ID or display name is on the protected list.</summary>
+        /// <param name="id">The group ID.</param>
+        /// <param name="displayName">The group display name.</param>
         public bool IsProtectedGroup(string id, string displayName)
         {
             return ProtectedGroups.Any(entry =>
@@ -90,12 +117,16 @@ namespace OnboardingAgent
                 || string.Equals(entry, displayName, StringComparison.OrdinalIgnoreCase));
         }
 
+        /// <summary>True when any of the role identifiers (display name, template ID or definition ID) is on the allowed list.</summary>
+        /// <param name="identifiers">Identifiers of one role. Null entries are ignored.</param>
         public bool IsAssignableRole(params string[] identifiers)
         {
             return identifiers.Any(identifier => identifier != null
                 && AssignableRoles.Contains(identifier, StringComparer.OrdinalIgnoreCase));
         }
 
+        /// <summary>Returns the reports site ID, or fails with a clear message when it is not set.</summary>
+        /// <exception cref="AdminActionException">The reports site variable is empty.</exception>
         public string RequireReportsSiteId()
         {
             if (string.IsNullOrEmpty(ReportsSiteId))
@@ -113,7 +144,7 @@ namespace OnboardingAgent
             var prefix = Optional(values, RequiredNamePrefixVariable, false);
             if (string.IsNullOrWhiteSpace(prefix))
             {
-                // An empty prefix would put every account in scope.
+                // An empty prefix would put every user in scope.
                 throw new AdminActionException("Environment variable " + RequiredNamePrefixVariable + " must be set.");
             }
 

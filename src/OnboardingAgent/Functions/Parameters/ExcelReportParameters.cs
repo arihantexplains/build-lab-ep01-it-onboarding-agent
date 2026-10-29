@@ -10,22 +10,32 @@ namespace OnboardingAgent.Functions.Parameters
     /// </summary>
     public sealed class ExcelReportParameters
     {
+        /// <summary>Report type that lists users.</summary>
         public const string UsersReport = "Users";
+        /// <summary>Report type that lists the members of one group.</summary>
         public const string GroupMembersReport = "GroupMembers";
 
         private static readonly char[] InvalidNameChars = { '\\', '/', ':', '*', '?', '"', '<', '>', '|', '#', '%' };
 
+        /// <summary>Either <see cref="UsersReport"/> or <see cref="GroupMembersReport"/>, from "reportType" (any letter case). Optional, default Users.</summary>
         public string ReportType { get; private set; }
 
+        /// <summary>Exact department to filter a Users report by, from "department". Optional.</summary>
         public string Department { get; private set; }
 
+        /// <summary>Group ID or name for a GroupMembers report, from "group" (or "groupId"). Required for GroupMembers, otherwise optional.</summary>
         public string Group { get; private set; }
 
+        /// <summary>Workbook file name from "fileName", with characters not allowed in file names removed and ".xlsx" added if missing. Optional, default is the report type plus a UTC time stamp. 1 to 115 characters before ".xlsx".</summary>
         public string FileName { get; private set; }
 
         /// <summary>Folder path with each segment URL-escaped, ready to put in a Graph drive path.</summary>
         public string EscapedFolder { get; private set; }
 
+        /// <summary>Reads and checks the parameters for BuildExcelReport.</summary>
+        /// <param name="p">The action parameters as a JSON object.</param>
+        /// <returns>The checked parameters.</returns>
+        /// <exception cref="ValidationException">"reportType" is not known, "group" is missing for a GroupMembers report, or the file name or folder is not valid.</exception>
         public static ExcelReportParameters Parse(JsonObject p)
         {
             var type = p.GetTrimmed("reportType") ?? UsersReport;

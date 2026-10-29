@@ -7,11 +7,15 @@ namespace OnboardingAgent.Functions
     /// <summary>
     /// Create, set manager, assign licences, add groups (listed or cloned), then email the temporary password to the manager.
     /// Every input is validated first; with previewOnly (the default) nothing is changed.
-    /// The welcome email is optional: with no mailbox (manager or sender) the account is still created and the step is reported as skipped.
+    /// The welcome email is optional: with no mailbox (manager or sender) the user is still created and the step is reported as skipped.
     /// The temporary password is never returned, logged or shown.
     /// </summary>
     public static class OnboardUser
     {
+        /// <summary>Validates every input, then returns a preview or creates and sets up the new user.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: the new user's profile fields, managerId, licences, groups or cloneFromUserId, sendWelcomeEmail and previewOnly.</param>
+        /// <returns>The ActionResult sent back to the agent, with the preview or one step per action. The temporary password is never included.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = OnboardUserParameters.Parse(parameters, ctx.Config);
@@ -88,7 +92,7 @@ namespace OnboardingAgent.Functions
 
             data["createdUserId"] = created.Id;
 
-            // Least privilege: the app has no AdministrativeUnit.ReadWrite.All, so an administrator adds new accounts to the unit.
+            // Least privilege: the app has no AdministrativeUnit.ReadWrite.All, so an administrator adds new users to the unit.
             if (ctx.Directory.TryAddToAdminUnit(created.Id))
             {
                 steps.Done("Add to administrative unit", "added");
@@ -98,7 +102,7 @@ namespace OnboardingAgent.Functions
                 steps.Skip("Add to administrative unit", "Not added: the app may not change the administrative unit, on purpose. An administrator adds the user.");
             }
 
-            // The account is seconds old, so each step retries briefly while Entra ID replicates it.
+            // The user is seconds old, so each step retries briefly while Entra ID replicates it.
             steps.Run("Set manager", () =>
             {
                 ctx.Directory.SetManager(created.Id, manager.Id, true);

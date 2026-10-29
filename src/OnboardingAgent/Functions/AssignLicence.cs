@@ -5,8 +5,13 @@ using OnboardingAgent.Functions.Parameters;
 
 namespace OnboardingAgent.Functions
 {
+    /// <summary>Assigns one or more subscribed licences to a managed user, setting the usage location first when the user has none.</summary>
     public static class AssignLicence
     {
+        /// <summary>Assigns the requested licences the user does not already have, after checking that free licences remain.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId, skus (part numbers or SKU IDs) and an optional usageLocation.</param>
+        /// <returns>The ActionResult sent back to the agent, listing the licences assigned and those the user already had.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = AssignLicenceParameters.Parse(parameters);
@@ -73,6 +78,8 @@ namespace OnboardingAgent.Functions
             return result;
         }
 
+        /// <summary>Throws a ValidationException when any of the SKUs has no free licences left.</summary>
+        /// <param name="skus">The SKUs about to be assigned.</param>
         public static void RequireAvailable(IEnumerable<SkuInfo> skus)
         {
             foreach (var sku in skus.Where(s => s.Available <= 0))
@@ -81,6 +88,12 @@ namespace OnboardingAgent.Functions
             }
         }
 
+        /// <summary>Assigns the SKUs to the user in one Graph call, with all service plans turned on.</summary>
+        /// <param name="ctx">The request context.</param>
+        /// <param name="userId">The object ID of the user.</param>
+        /// <param name="skus">The SKUs to assign.</param>
+        /// <param name="retryOnReplicationDelay">True for a user created seconds ago, so the call retries while Entra ID replicates it.</param>
+        /// <returns>A short description such as "Assigned ENTERPRISEPACK" for the result message.</returns>
         public static string Assign(ActionContext ctx, string userId, IList<SkuInfo> skus, bool retryOnReplicationDelay)
         {
             var add = new JsonArray(skus.Select(sku => new JsonObject

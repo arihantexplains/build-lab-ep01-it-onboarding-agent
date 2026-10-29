@@ -12,6 +12,8 @@ namespace OnboardingAgent
         // Leaves headroom inside the 2-minute sandbox limit for loading config and writing the audit row.
         private static readonly TimeSpan TimeBudget = TimeSpan.FromSeconds(90);
 
+        /// <summary>Reads the inputs, runs the requested action, writes the audit row and sets Success, Message, ResultJson and CorrelationId.</summary>
+        /// <param name="serviceProvider">Dataverse services for this call.</param>
         public void Execute(IServiceProvider serviceProvider)
         {
             var deadline = new Deadline(TimeBudget);

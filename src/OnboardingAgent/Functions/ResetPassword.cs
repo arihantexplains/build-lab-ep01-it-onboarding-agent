@@ -8,6 +8,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class ResetPassword
     {
+        /// <summary>Checks the user has a manager with a mailbox, then sets a new temporary password and emails it to that manager.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId and forceChangePasswordNextSignIn.</param>
+        /// <returns>The ActionResult sent back to the agent, or a failure when the password was reset but the email could not be sent.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             Validator.RequireApproval(ctx.ApprovalId, "ResetPassword");

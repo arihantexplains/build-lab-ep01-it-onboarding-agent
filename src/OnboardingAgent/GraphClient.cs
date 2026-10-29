@@ -14,6 +14,7 @@ namespace OnboardingAgent
     /// </summary>
     public sealed class GraphClient
     {
+        /// <summary>Base URL for Graph v1.0. Absolute links are only followed when they start with it.</summary>
         public const string GraphRoot = "https://graph.microsoft.com/v1.0";
 
         private const int MaxTries = 3;
@@ -27,6 +28,11 @@ namespace OnboardingAgent
         private readonly Deadline _deadline;
         private readonly string _correlationId;
 
+        /// <summary>Creates a client for one plug-in call.</summary>
+        /// <param name="config">Settings with the tenant, client ID and secret.</param>
+        /// <param name="trace">Plug-in trace log.</param>
+        /// <param name="deadline">Time budget that caps timeouts and retries.</param>
+        /// <param name="correlationId">Sent as client-request-id so Graph logs can be matched to this call.</param>
         public GraphClient(Config config, ITracingService trace, Deadline deadline, string correlationId)
         {
             _config = config;
@@ -37,31 +43,59 @@ namespace OnboardingAgent
 
         private string TokenKey => _config.TenantId + "|" + _config.ClientId;
 
+        /// <summary>Sends a GET request.</summary>
+        /// <param name="path">Path relative to <see cref="GraphRoot"/>, or an absolute Graph nextLink.</param>
+        /// <param name="options">Optional per-call settings.</param>
+        /// <returns>The parsed JSON response, or an empty object when there is no JSON body.</returns>
         public JsonObject Get(string path, GraphCallOptions options = null)
         {
             return Send(HttpMethod.Get, path, null, options);
         }
 
+        /// <summary>Sends a POST request with a JSON body. Not retried on 5xx or network errors unless marked idempotent.</summary>
+        /// <param name="path">Path relative to <see cref="GraphRoot"/>.</param>
+        /// <param name="body">Object serialized as the JSON body, or null.</param>
+        /// <param name="options">Optional per-call settings.</param>
+        /// <returns>The parsed JSON response, or an empty object when there is no JSON body.</returns>
         public JsonObject Post(string path, object body, GraphCallOptions options = null)
         {
             return Send(HttpMethod.Post, path, JsonBody(body), options);
         }
 
+        /// <summary>Sends a PATCH request with a JSON body.</summary>
+        /// <param name="path">Path relative to <see cref="GraphRoot"/>.</param>
+        /// <param name="body">Object serialized as the JSON body, or null.</param>
+        /// <param name="options">Optional per-call settings.</param>
+        /// <returns>The parsed JSON response, or an empty object when there is no JSON body.</returns>
         public JsonObject Patch(string path, object body, GraphCallOptions options = null)
         {
             return Send(PatchMethod, path, JsonBody(body), options);
         }
 
+        /// <summary>Sends a PUT request with a JSON body.</summary>
+        /// <param name="path">Path relative to <see cref="GraphRoot"/>.</param>
+        /// <param name="body">Object serialized as the JSON body, or null.</param>
+        /// <param name="options">Optional per-call settings.</param>
+        /// <returns>The parsed JSON response, or an empty object when there is no JSON body.</returns>
         public JsonObject Put(string path, object body, GraphCallOptions options = null)
         {
             return Send(HttpMethod.Put, path, JsonBody(body), options);
         }
 
+        /// <summary>Sends a DELETE request.</summary>
+        /// <param name="path">Path relative to <see cref="GraphRoot"/>.</param>
+        /// <param name="options">Optional per-call settings.</param>
         public void Delete(string path, GraphCallOptions options = null)
         {
             Send(HttpMethod.Delete, path, null, options);
         }
 
+        /// <summary>Uploads raw bytes with a PUT request, for example a report file.</summary>
+        /// <param name="path">Path relative to <see cref="GraphRoot"/>.</param>
+        /// <param name="content">The file content.</param>
+        /// <param name="contentType">MIME type of the content.</param>
+        /// <param name="options">Optional per-call settings.</param>
+        /// <returns>The parsed JSON response, such as the created drive item.</returns>
         public JsonObject PutBytes(string path, byte[] content, string contentType, GraphCallOptions options = null)
         {
             return Send(HttpMethod.Put, path, () =>

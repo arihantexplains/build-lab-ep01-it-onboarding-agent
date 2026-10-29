@@ -11,6 +11,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class RemoveRole
     {
+        /// <summary>Checks the approval and the allow-list, then deletes every assignment of the role held by the user.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId and role (a role name or role definition ID).</param>
+        /// <returns>The ActionResult sent back to the agent, with one step per assignment removed.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             Validator.RequireApproval(ctx.ApprovalId, "RemoveRole");

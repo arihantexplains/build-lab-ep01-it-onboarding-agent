@@ -7,6 +7,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class GetSignInMethods
     {
+        /// <summary>Lists the user's registered sign-in methods and whether any of them counts towards MFA.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId.</param>
+        /// <returns>The ActionResult sent back to the agent, with the masked methods and an mfaCapable flag.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = UserTargetParameters.Parse(parameters);

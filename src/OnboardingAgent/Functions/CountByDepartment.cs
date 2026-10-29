@@ -12,6 +12,10 @@ namespace OnboardingAgent.Functions
     {
         private const int MaxUsers = 20000;
 
+        /// <summary>Counts in-scope users per department, optionally for one department and including disabled users.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: an optional department and includeDisabled.</param>
+        /// <returns>The ActionResult sent back to the agent, with the total, a count per department and whether the count was cut short.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = CountByDepartmentParameters.Parse(parameters);

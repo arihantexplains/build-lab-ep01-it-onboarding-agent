@@ -7,6 +7,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class DisableUser
     {
+        /// <summary>Blocks sign-in for the user and, when revokeSessions is true, also revokes their sessions.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: userId and revokeSessions.</param>
+        /// <returns>The ActionResult sent back to the agent, with the steps taken and the approval ID.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = DisableUserParameters.Parse(parameters);

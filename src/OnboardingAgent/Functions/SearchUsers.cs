@@ -12,6 +12,10 @@ namespace OnboardingAgent.Functions
     {
         private const int MaxScanned = 5000;
 
+        /// <summary>Searches in-scope users and returns the first matches, sorted by name.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: optional name, department, jobTitle, includeDisabled and top.</param>
+        /// <returns>The ActionResult sent back to the agent, with up to top users, the total number of matches and whether the list was cut short.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = SearchUsersParameters.Parse(parameters);

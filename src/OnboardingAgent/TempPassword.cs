@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 
 namespace OnboardingAgent
 {
+    /// <summary>Generates temporary passwords from a cryptographic random source.</summary>
     public static class TempPassword
     {
         // Look-alike characters (I, l, O, 0, 1) are left out because the password is read aloud or retyped.
@@ -12,6 +13,8 @@ namespace OnboardingAgent
         private const string Symbols = "!@#$%*?-+=";
         private const int Length = 16;
 
+        /// <summary>Creates a 16 character password with at least one upper case letter, lower case letter, digit and symbol, in shuffled order.</summary>
+        /// <returns>The new temporary password.</returns>
         public static string Generate()
         {
             var all = Upper + Lower + Digits + Symbols;

@@ -7,10 +7,16 @@ namespace OnboardingAgent.Functions.Parameters
     {
         private const int MaxGroups = 25;
 
+        /// <summary>The user to add or remove, by object ID or UPN, from "userId". Required.</summary>
         public string UserId { get; private set; }
 
+        /// <summary>Group IDs or exact display names from "groups". Required, 1 to 25 groups. Blank and duplicate entries are dropped.</summary>
         public List<string> Groups { get; private set; }
 
+        /// <summary>Reads and checks the parameters for AddToGroups or RemoveFromGroups.</summary>
+        /// <param name="p">The action parameters as a JSON object.</param>
+        /// <returns>The checked parameters.</returns>
+        /// <exception cref="ValidationException">"userId" is missing, or "groups" is empty or lists more than 25 groups.</exception>
         public static GroupChangeParameters Parse(JsonObject p)
         {
             var result = new GroupChangeParameters

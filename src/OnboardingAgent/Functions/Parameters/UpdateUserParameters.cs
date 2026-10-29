@@ -5,7 +5,7 @@ namespace OnboardingAgent.Functions.Parameters
 {
     /// <summary>
     /// { "userId": ..., then any of the allowed fields }. A field set to null or "" is cleared.
-    /// Sign-in name, account state and passwords have their own actions and are refused here.
+    /// Sign-in name, sign-in state and passwords have their own actions and are refused here.
     /// </summary>
     public sealed class UpdateUserParameters
     {
@@ -15,11 +15,16 @@ namespace OnboardingAgent.Functions.Parameters
             "employeeType", "mobilePhone", "usageLocation", "city", "state", "country", "postalCode", "streetAddress"
         };
 
+        /// <summary>The user to change, by object ID or UPN, from "userId". Required.</summary>
         public string UserId { get; private set; }
 
         /// <summary>The Graph PATCH body.</summary>
         public JsonObject Changes { get; private set; }
 
+        /// <summary>Reads and checks the parameters for UpdateUser.</summary>
+        /// <param name="p">The action parameters as a JSON object.</param>
+        /// <returns>The checked parameters.</returns>
+        /// <exception cref="ValidationException">"userId" is missing, no field is given, a field is not allowed or not text, displayName is cleared, or usageLocation is not valid.</exception>
         public static UpdateUserParameters Parse(JsonObject p)
         {
             var changes = new JsonObject();

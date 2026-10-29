@@ -8,6 +8,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class ListAssignableRoles
     {
+        /// <summary>Lists the directory roles that match the allow-list.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">Not used: this operation takes no parameters.</param>
+        /// <returns>The ActionResult sent back to the agent, with the name, description and template ID of each role.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             if (ctx.Config.AssignableRoles.Count == 0)

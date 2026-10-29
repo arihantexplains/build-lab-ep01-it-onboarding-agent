@@ -10,23 +10,31 @@ namespace OnboardingAgent
     /// </summary>
     public sealed class DirectoryService
     {
+        /// <summary>User properties requested for every user lookup.</summary>
         public const string UserSelect = "id,displayName,userPrincipalName,mail,accountEnabled,usageLocation,department,jobTitle";
+        /// <summary>Group properties requested for every group lookup, including those the write checks need.</summary>
         public const string GroupSelect = "id,displayName,mail,groupTypes,membershipRule,isAssignableToRole,mailEnabled,securityEnabled,onPremisesSyncEnabled";
 
         private readonly GraphClient _graph;
         private readonly Config _config;
 
+        /// <summary>Creates the service over a Graph client and the loaded settings.</summary>
+        /// <param name="graph">Client for Microsoft Graph calls.</param>
+        /// <param name="config">Settings loaded from environment variables.</param>
         public DirectoryService(GraphClient graph, Config config)
         {
             _graph = graph;
             _config = config;
         }
 
+        /// <summary>Escapes a value for use as one segment of a Graph URL path.</summary>
         public static string Segment(string value)
         {
             return Uri.EscapeDataString(value);
         }
 
+        /// <summary>Builds an escaped $filter query option.</summary>
+        /// <param name="filter">The OData filter expression.</param>
         public static string Filter(string filter)
         {
             return "$filter=" + Uri.EscapeDataString(filter);
@@ -38,6 +46,10 @@ namespace OnboardingAgent
             return "'" + value.Replace("'", "''") + "'";
         }
 
+        /// <summary>Finds a user by object ID, UPN or display name. A bare name is matched with and without the required prefix.</summary>
+        /// <param name="idOrUpn">Object ID, UPN or display name.</param>
+        /// <param name="retryOnReplicationDelay">Retry a 404 briefly, for a user created moments ago.</param>
+        /// <returns>The user. Throws when not found or when a name matches more than one user.</returns>
         public UserInfo GetUser(string idOrUpn, bool retryOnReplicationDelay = false)
         {
             if (string.IsNullOrWhiteSpace(idOrUpn))
@@ -61,7 +73,7 @@ namespace OnboardingAgent
         }
 
         /// <summary>
-        /// Names typed in chat ("Ankit Verma") resolve to the prefixed account ("Demo-Ankit Verma"); the name must match exactly one user.
+        /// Names typed in chat ("Ankit Verma") resolve to the prefixed user ("Demo-Ankit Verma"); the name must match exactly one user.
         /// </summary>
         private UserInfo FindUserByDisplayName(string name)
         {
@@ -86,6 +98,7 @@ namespace OnboardingAgent
             throw new ValidationException("User '" + name + "' was not found.");
         }
 
+        /// <summary>True when a user with this UPN or ID exists, used to avoid duplicate UPNs.</summary>
         public bool UserExists(string userPrincipalName)
         {
             try
@@ -112,6 +125,9 @@ namespace OnboardingAgent
             }
         }
 
+        /// <summary>Finds a group by object ID or exact display name.</summary>
+        /// <param name="idOrName">Group object ID or display name.</param>
+        /// <returns>The group. Throws when not found or when the name matches more than one group.</returns>
         public GroupInfo GetGroup(string idOrName)
         {
             if (string.IsNullOrWhiteSpace(idOrName))
@@ -144,6 +160,9 @@ namespace OnboardingAgent
             return GroupInfo.From(matches[0]);
         }
 
+        /// <summary>Lists the groups a user belongs to, up to 2000.</summary>
+        /// <param name="userId">The user's object ID.</param>
+        /// <param name="transitive">True to include groups reached through nested membership.</param>
         public List<GroupInfo> GetUserGroups(string userId, bool transitive)
         {
             bool truncated;
@@ -206,7 +225,7 @@ namespace OnboardingAgent
             }
         }
 
-        /// <summary>True when the account exists and has a mailbox address. A missing account counts as no mailbox.</summary>
+        /// <summary>True when the user exists and has a mailbox address. A missing user counts as no mailbox.</summary>
         public bool HasMailbox(string idOrUpn)
         {
             if (string.IsNullOrWhiteSpace(idOrUpn))
@@ -224,6 +243,10 @@ namespace OnboardingAgent
             }
         }
 
+        /// <summary>Sets or replaces the user's manager.</summary>
+        /// <param name="userId">The user's object ID.</param>
+        /// <param name="managerId">The manager's object ID.</param>
+        /// <param name="retryOnReplicationDelay">Retry briefly when either user was created moments ago.</param>
         public void SetManager(string userId, string managerId, bool retryOnReplicationDelay)
         {
             _graph.Put("/users/" + userId + "/manager/$ref",
@@ -261,6 +284,13 @@ namespace OnboardingAgent
             }
         }
 
+        /// <summary>Sends an email from the configured sender mailbox. Recipients are not checked here; callers use <see cref="Validator.RequireInternalRecipient"/> first.</summary>
+        /// <param name="to">Recipient addresses.</param>
+        /// <param name="cc">Copy addresses, or null.</param>
+        /// <param name="subject">Email subject.</param>
+        /// <param name="body">Email body.</param>
+        /// <param name="isHtml">True when the body is HTML, false for plain text.</param>
+        /// <param name="saveToSentItems">Whether to keep a copy in the sender's Sent Items.</param>
         public void SendMail(IEnumerable<string> to, IEnumerable<string> cc, string subject, string body, bool isHtml, bool saveToSentItems)
         {
             var message = new JsonObject
@@ -279,6 +309,13 @@ namespace OnboardingAgent
                 new GraphCallOptions { NotFoundMessage = "The sender mailbox " + _config.SenderMailbox + " was not found." });
         }
 
+        /// <summary>Emails a temporary password to a person such as the manager, without saving a copy in Sent Items.</summary>
+        /// <param name="recipient">Who receives the email. Must have a mailbox.</param>
+        /// <param name="account">The user the password belongs to.</param>
+        /// <param name="password">The temporary password.</param>
+        /// <param name="reason">Opening sentence explaining why the password was set.</param>
+        /// <param name="mustChange">Adds a note that the password must be changed at first sign-in.</param>
+        /// <param name="correlationId">Reference shown at the bottom of the email.</param>
         public void SendTemporaryPassword(UserInfo recipient, UserInfo account, string password, string reason, bool mustChange, string correlationId)
         {
             if (string.IsNullOrEmpty(recipient.Mail))

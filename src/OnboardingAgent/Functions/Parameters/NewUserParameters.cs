@@ -7,39 +7,57 @@ using System.Text.RegularExpressions;
 namespace OnboardingAgent.Functions.Parameters
 {
     /// <summary>
-    /// A new account. The UPN is always placed in the configured domain; when it is omitted it is built as given.surname.
+    /// A new user. The UPN is always placed in the configured domain; when it is omitted it is built as given.surname.
     /// </summary>
     public sealed class NewUserParameters
     {
         private static readonly Regex LocalPartPattern = new Regex(@"^[a-z0-9](?:[a-z0-9._'-]{0,62}[a-z0-9])?$", RegexOptions.CultureInvariant);
         private static readonly Regex NicknameInvalid = new Regex(@"[^a-z0-9._-]", RegexOptions.CultureInvariant);
 
+        /// <summary>Display name from "displayName". Required, 256 characters or fewer.</summary>
         public string DisplayName { get; private set; }
 
+        /// <summary>First name from "givenName". Required.</summary>
         public string GivenName { get; private set; }
 
+        /// <summary>Last name from "surname". Required.</summary>
         public string Surname { get; private set; }
 
+        /// <summary>Sign-in name in the configured domain. Built from "userPrincipalName" when given (a different domain is refused), otherwise from the name prefix, given name and surname.</summary>
         public string UserPrincipalName { get; private set; }
 
+        /// <summary>Mail alias from "mailNickname", or the UPN user name when omitted. Lower case, 1 to 64 letters, digits, dots, hyphens or underscores; other characters are removed.</summary>
         public string MailNickname { get; private set; }
 
+        /// <summary>Department from "department". Optional.</summary>
         public string Department { get; private set; }
 
+        /// <summary>Job title from "jobTitle". Optional.</summary>
         public string JobTitle { get; private set; }
 
+        /// <summary>Office location from "officeLocation". Optional.</summary>
         public string OfficeLocation { get; private set; }
 
+        /// <summary>Company name from "companyName". Optional.</summary>
         public string CompanyName { get; private set; }
 
+        /// <summary>Employee ID from "employeeId". Optional.</summary>
         public string EmployeeId { get; private set; }
 
+        /// <summary>Mobile phone number from "mobilePhone". Optional.</summary>
         public string MobilePhone { get; private set; }
 
+        /// <summary>Two-letter country code from "usageLocation", in upper case. Optional, but licences cannot be assigned without one.</summary>
         public string UsageLocation { get; private set; }
 
+        /// <summary>The manager, by object ID or UPN, from "managerId". Optional here; OnboardUser requires it.</summary>
         public string ManagerId { get; private set; }
 
+        /// <summary>Reads and checks the parameters for CreateUser and builds the UPN and mail alias.</summary>
+        /// <param name="p">The action parameters as a JSON object.</param>
+        /// <param name="config">The plugin settings that give the UPN domain and the required name prefix.</param>
+        /// <returns>The checked parameters.</returns>
+        /// <exception cref="ValidationException">A required name is missing, the display name is too long, or the UPN, mail alias or usage location is not valid.</exception>
         public static NewUserParameters Parse(JsonObject p, Config config)
         {
             var result = new NewUserParameters
@@ -83,6 +101,10 @@ namespace OnboardingAgent.Functions.Parameters
             return result;
         }
 
+        /// <summary>Checks a usage location and returns it in upper case.</summary>
+        /// <param name="value">The trimmed value, or null when it was not given.</param>
+        /// <returns>The two-letter country code in upper case, or null when <paramref name="value"/> is null.</returns>
+        /// <exception cref="ValidationException">The value is not exactly two letters.</exception>
         public static string ParseUsageLocation(string value)
         {
             if (value == null)
@@ -99,6 +121,8 @@ namespace OnboardingAgent.Functions.Parameters
         }
 
         /// <summary>The Graph request body. The only place the temporary password is attached.</summary>
+        /// <param name="temporaryPassword">The first password. The user must change it at the next sign-in.</param>
+        /// <returns>A new JSON object for the Graph create user request, with the user enabled.</returns>
         public JsonObject ToGraphUser(string temporaryPassword)
         {
             var user = new JsonObject
@@ -116,6 +140,8 @@ namespace OnboardingAgent.Functions.Parameters
             return user;
         }
 
+        /// <summary>The fields that would be sent to Graph, without the password, for a preview.</summary>
+        /// <returns>A new JSON object with the names, UPN, mail alias and any optional fields that are set.</returns>
         public JsonObject ToPreview()
         {
             var user = new JsonObject

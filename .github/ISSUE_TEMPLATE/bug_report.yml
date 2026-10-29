@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in the code, flow or agent doesn't work as the docs say.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Please remove tenant IDs, client IDs, secrets, email addresses, environment URLs and real names** from everything you paste below.
+        Security problems: please don't use this form, see SECURITY.md.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part?
+      options:
+        - Plugin (C#)
+        - Agent flow
+        - Copilot Studio agent
+        - Setup or docs
+    validations:
+      required: true
+  - type: input
+    id: operation
+    attributes:
+      label: Operation
+      description: For example OnboardUser or ResetPassword, if it's about one operation.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The prompt you typed or the ActionName and ParametersJson you sent (with placeholder names).
+    validations:
+      required: true
+  - type: textarea
+    id: message
+    attributes:
+      label: Message and CorrelationId
+      description: The Message the plugin returned and the CorrelationId from the audit row. Scrub anything that identifies your tenant.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I tested in a demo tenant, not with production users.
+          required: true
+        - label: I removed IDs, secrets, emails, URLs and real names from this issue.
+          required: true

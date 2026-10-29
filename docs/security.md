@@ -26,7 +26,7 @@ Enforced in `Validator.cs` for every operation:
 
 ## Approvals
 
-`ResetPassword`, `AssignRole`, `RemoveRole`, `RevokeSessions`, `DisableUser` and `OffboardUser` need an approval ID. The flow only supplies one after the IT lead approves, and the plugin refuses these operations without it, so neither the agent nor a hand-crafted call can skip the approval.
+`ResetPassword`, `AssignRole`, `RemoveRole`, `RevokeSessions`, `DisableUser` and `OffboardUser` need an approval ID. The flow only supplies one after the IT lead approves, and the plugin refuses these operations without it, so the agent can't skip the approval. The plugin checks that an approval ID is present and well-formed, but it doesn't look it up in the Approvals service. So someone who holds the Custom API's Execute Privilege and calls the Dataverse Web API directly could pass a made-up ID. Keep that privilege to the smallest group you can (ideally only the identity the flow's Dataverse connection runs as). If you need more than that, have the plugin look up the approval record before it acts. That's a good first contribution.
 
 ## Passwords
 
@@ -38,7 +38,7 @@ Enforced in `Validator.cs` for every operation:
 ## Who can call it
 
 - The agent is shared only with an IT security group, with Entra ID authentication.
-- The Custom API has an Execute Privilege Name, so only the flow's connection identity can call it.
+- The Custom API has an Execute Privilege Name, so only the people or identity you give that privilege can call it. Keep that list as small as you can.
 
 ## Secrets
 

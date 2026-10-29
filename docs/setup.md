@@ -16,7 +16,7 @@ Every `<...>` value below is yours to fill in. Keep them out of Git.
 - 30 to 100 made-up users, all with display names starting with `Demo-` (or your own prefix).
 - Departments such as Finance, Sales, HR, IT and Operations, with job titles and a manager chain a few levels deep.
 - Security groups that also start with `Demo-`, for example `Demo-VPN-Users` and `Demo-Finance-Team`. Add one dynamic group and one role-assignable group if you want to see the skip rules work.
-- An administrative unit, for example `Demo-Employees`, containing the normal staff. Keep your admin accounts **outside** it.
+- An administrative unit, for example `Demo-Employees`, containing the normal staff. Keep your admin users **outside** it.
 - A security group for the people allowed to use the agent, for example `Demo-IT-Admin-Agent-Users`.
 - Optional: a shared mailbox to send from, and a SharePoint site for reports.
 
@@ -57,7 +57,7 @@ Every `<...>` value below is yours to fill in. Keep them out of Git.
 Create the `ab_adminactionlog` table and the `ab_ExecuteAdminAction` Custom API exactly as listed in [src/OnboardingAgent/README.md](../src/OnboardingAgent/README.md):
 
 - Custom API: unbound, not a function. Request parameters `ActionName`, `ParametersJson`, `RequestedBy` (required) and `ApprovalId` (optional). Response properties `Success`, `Message`, `ResultJson`, `CorrelationId`.
-- Set an **Execute Privilege Name** so only the flow's identity can call it.
+- Set an **Execute Privilege Name** and give it only to the identity the flow's Dataverse connection runs as (or a small IT group).
 
 ## 6. Plugin
 

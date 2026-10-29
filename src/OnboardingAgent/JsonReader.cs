@@ -4,6 +4,7 @@ using System.Text;
 
 namespace OnboardingAgent
 {
+    /// <summary>The parser behind Json.Parse. Reads one JSON document and reports errors with the character position.</summary>
     internal sealed class JsonReader
     {
         private const int MaxDepth = 64;
@@ -11,11 +12,15 @@ namespace OnboardingAgent
         private readonly string _text;
         private int _position;
 
+        /// <summary>Creates a reader over the given JSON text.</summary>
+        /// <param name="text">The JSON text to read.</param>
         public JsonReader(string text)
         {
             _text = text;
         }
 
+        /// <summary>Reads the single JSON value in the text and checks that nothing but whitespace follows it.</summary>
+        /// <returns>A JsonObject, JsonArray, string, long, double, bool or null.</returns>
         public object ReadDocument()
         {
             var value = ReadValue(0);

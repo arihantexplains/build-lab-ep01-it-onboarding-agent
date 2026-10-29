@@ -11,6 +11,10 @@ namespace OnboardingAgent.Functions
     /// </summary>
     public static class CloneAccess
     {
+        /// <summary>Plans which of the source user's groups to copy to the target user, and adds them unless previewOnly is true.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: sourceUserId, targetUserId and previewOnly.</param>
+        /// <returns>The ActionResult sent back to the agent, with the plan and, when applied, one step per group added.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = CloneAccessParameters.Parse(parameters);

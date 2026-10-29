@@ -10,10 +10,12 @@ namespace OnboardingAgent
     /// </summary>
     public sealed class JsonObject : Dictionary<string, object>
     {
+        /// <summary>Creates an empty object with case-insensitive keys.</summary>
         public JsonObject() : base(StringComparer.OrdinalIgnoreCase)
         {
         }
 
+        /// <summary>Returns the value as text, or null when it is missing, null, an object or an array. Booleans become "true" or "false".</summary>
         public string GetString(string key)
         {
             object value;
@@ -43,6 +45,7 @@ namespace OnboardingAgent
             return text.Length == 0 ? null : text;
         }
 
+        /// <summary>Returns the trimmed string, or throws a ValidationException when it is missing or blank.</summary>
         public string RequireString(string key)
         {
             var text = GetTrimmed(key);
@@ -54,6 +57,10 @@ namespace OnboardingAgent
             return text;
         }
 
+        /// <summary>Returns the value as a boolean, also accepting the strings "true" and "false".</summary>
+        /// <param name="key">The property name.</param>
+        /// <param name="defaultValue">Returned when the value is missing or null.</param>
+        /// <exception cref="ValidationException">The value is not a boolean.</exception>
         public bool GetBool(string key, bool defaultValue)
         {
             object value;
@@ -77,11 +84,21 @@ namespace OnboardingAgent
             throw new ValidationException("Parameter '" + key + "' must be true or false.");
         }
 
+        /// <summary>Returns the value as a whole number, accepting numbers and numeric strings.</summary>
+        /// <param name="key">The property name.</param>
+        /// <param name="defaultValue">Returned when the value is missing or null.</param>
+        /// <exception cref="ValidationException">The value is not a whole number that fits in an int.</exception>
         public int GetInt(string key, int defaultValue)
         {
             return GetInt(key, defaultValue, int.MinValue, int.MaxValue);
         }
 
+        /// <summary>Returns the value as a whole number within a range, accepting numbers and numeric strings.</summary>
+        /// <param name="key">The property name.</param>
+        /// <param name="defaultValue">Returned when the value is missing or null.</param>
+        /// <param name="min">The smallest allowed value.</param>
+        /// <param name="max">The largest allowed value.</param>
+        /// <exception cref="ValidationException">The value is not a whole number or is outside min to max.</exception>
         public int GetInt(string key, int defaultValue, int min, int max)
         {
             object value;
@@ -115,6 +132,7 @@ namespace OnboardingAgent
             return (int)number;
         }
 
+        /// <summary>Returns the nested object, or null when it is missing or not an object.</summary>
         public JsonObject GetObject(string key)
         {
             object value;

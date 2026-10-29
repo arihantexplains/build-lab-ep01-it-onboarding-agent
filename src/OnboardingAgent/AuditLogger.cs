@@ -9,6 +9,7 @@ namespace OnboardingAgent
     /// </summary>
     public sealed class AuditLogger
     {
+        /// <summary>Logical name of the Dataverse audit table.</summary>
         public const string TableName = "ab_adminactionlog";
 
         private static readonly string[] SensitiveKeyFragments = { "password", "secret", "token", "credential" };
@@ -16,12 +17,26 @@ namespace OnboardingAgent
         private readonly IOrganizationService _service;
         private readonly ITracingService _trace;
 
+        /// <summary>Creates the logger.</summary>
+        /// <param name="service">Organization service running as SYSTEM, so callers need no rights on the audit table.</param>
+        /// <param name="trace">Plug-in trace log for write failures.</param>
         public AuditLogger(IOrganizationService service, ITracingService trace)
         {
             _service = service;
             _trace = trace;
         }
 
+        /// <summary>Writes one audit row with sensitive parameters redacted and every value cut to its column length.</summary>
+        /// <param name="actionName">The requested action.</param>
+        /// <param name="requestedBy">Who asked for the action.</param>
+        /// <param name="approvalId">Approval reference, or null.</param>
+        /// <param name="correlationId">ID that links the row to the trace log.</param>
+        /// <param name="parametersJson">The raw request parameters.</param>
+        /// <param name="success">Whether the action succeeded.</param>
+        /// <param name="message">The message returned to the caller.</param>
+        /// <param name="resultJson">The result data as JSON.</param>
+        /// <param name="duration">How long the call took.</param>
+        /// <returns>True when the row was written; false when the write failed and was traced.</returns>
         public bool TryWrite(string actionName, string requestedBy, string approvalId, string correlationId, string parametersJson,
             bool success, string message, string resultJson, TimeSpan duration)
         {

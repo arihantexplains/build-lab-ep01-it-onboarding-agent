@@ -21,6 +21,10 @@ namespace OnboardingAgent.Functions
 
         private static readonly string[] MemberHeaders = { "Display name", "UPN", "Department", "Job title", "Enabled" };
 
+        /// <summary>Builds the workbook and uploads it to the reports folder. If the file name is taken, the new file is renamed.</summary>
+        /// <param name="ctx">The request context: Graph client, directory service, validator, configuration and approval ID.</param>
+        /// <param name="parameters">The JSON parameters from the agent: reportType (Users or GroupMembers), department, group, fileName and folder.</param>
+        /// <returns>The ActionResult sent back to the agent, with the saved file's name, web link and row count.</returns>
         public static ActionResult Run(ActionContext ctx, JsonObject parameters)
         {
             var p = ExcelReportParameters.Parse(parameters);
