@@ -1,0 +1,24 @@
+# Build output
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+
+# Signing keys and credentials: never commit these
+*.snk
+*.pfx
+*.pem
+*.key
+*.cer
+
+# Real settings. Only appsettings.sample.json belongs in the repo.
+appsettings.json
+appsettings.*.json
+!appsettings.sample.json
+deploymentsettings*.json
+*.env
+.env*
+
+# Solution exports can carry environment variable values
+*.zip

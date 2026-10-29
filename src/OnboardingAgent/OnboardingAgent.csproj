@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <RootNamespace>OnboardingAgent</RootNamespace>
+    <AssemblyName>OnboardingAgent</AssemblyName>
+    <Version>1.0.0.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- Classic plug-in assemblies must be strong-named. Create the key once with: sn -k OnboardingAgent.snk -->
+  <PropertyGroup Condition="Exists('OnboardingAgent.snk')">
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>OnboardingAgent.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.56" />
+    <!-- Build-time only: lets the project build without the .NET Framework 4.6.2 targeting pack installed. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.IO.Compression" />
+  </ItemGroup>
+
+</Project>

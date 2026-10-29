@@ -1,0 +1,1426 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "ab_OnboardingDataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      },
+      "shared_approvals": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "ab_OnboardingApprovals"
+        },
+        "api": {
+          "name": "shared_approvals"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "Approver email (ab_ApproverEmail)": {
+          "defaultValue": "",
+          "type": "String",
+          "metadata": {
+            "schemaName": "ab_ApproverEmail",
+            "description": "IT lead who approves password resets, role changes, sign-outs, disabling and offboarding."
+          }
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Skills",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "ActionName": {
+                  "title": "ActionName",
+                  "type": "string",
+                  "description": "Which admin action to run. Use exactly one of these names (33).\nUser onboarding: OnboardUser (new joiner, preview first), CreateUser, CloneAccess, AssignLicence, SendEmail.\nUser management: GetUser, SearchUsers, UpdateUser, SetManager, RemoveManager, GetUserLicences, RemoveLicence, EnableUser, ResetPassword*, RevokeSessions*, DisableUser*, OffboardUser*.\nGroup management: ListGroups, ListGroupMembers, GetGroupMemberships, AddToGroups, RemoveFromGroups.\nEntra ID administration: ListAssignableRoles, GetUserRoles, AssignRole*, RemoveRole*, GetSignInMethods, GetSignInStatus.\nQuestions and reports: GetManagerChain, GetDirectReports, CountByDepartment, AuditQuery, BuildExcelReport.\n* = needs the IT lead's approval. The flow sends the approval and replies at once; nothing changes until the IT lead approves.",
+                  "x-ms-content-hint": "TEXT",
+                  "x-ms-dynamically-added": true
+                },
+                "ParametersJson": {
+                  "title": "ParametersJson",
+                  "type": "string",
+                  "description": "The parameters as one JSON object. Use people and groups by the name the user gave (for example \"Ankit Verma\", \"Demo-VPN-Users\"); the plugin finds them.\nOnboardUser: displayName (starts with Demo-), givenName, surname, department, jobTitle, managerId, cloneFromUserId or groups, previewOnly (true for the summary, false only after the user confirms). Example: {\"displayName\":\"Demo-Priya Sharma\",\"givenName\":\"Priya\",\"surname\":\"Sharma\",\"department\":\"Finance\",\"jobTitle\":\"Financial Analyst\",\"managerId\":\"Rahul Mehta\",\"cloneFromUserId\":\"Ankit Verma\",\"previewOnly\":true}\nCloneAccess: sourceUserId, targetUserId, previewOnly. AddToGroups, RemoveFromGroups: userId, groups. Example: {\"userId\":\"Neha Kapoor\",\"groups\":[\"Demo-VPN-Users\"]}\nUpdateUser: userId plus the fields to change (jobTitle, department, officeLocation, mobilePhone). SetManager: userId, managerId.\nAssignLicence, RemoveLicence: userId, skus. AssignRole, RemoveRole: userId, role (for example \"Reports Reader\"). DisableUser: userId, revokeSessions.\nSearchUsers: name, department and/or jobTitle. CountByDepartment: department (optional). ListGroups: nameStartsWith (optional). ListGroupMembers: group.\nAuditQuery: userId, or source \"log\"; days. BuildExcelReport: reportType \"Users\" or \"GroupMembers\", department or group. ListAssignableRoles: {}.\nEvery other action: {\"userId\":\"<name>\"}. Never put a password in here.",
+                  "x-ms-content-hint": "TEXT",
+                  "x-ms-dynamically-added": true
+                },
+                "RequestedBy": {
+                  "title": "RequestedBy",
+                  "type": "string",
+                  "description": "Optional. Name of the person asking, if known. Leave empty otherwise: the flow records the signed-in user.",
+                  "x-ms-content-hint": "TEXT",
+                  "x-ms-dynamically-added": true
+                },
+                "ApprovalId": {
+                  "title": "ApprovalId",
+                  "type": "string",
+                  "description": "Optional. Leave empty. Risky actions get their approval ID from the IT lead's approval inside this flow; a value given here never skips an approval.",
+                  "x-ms-content-hint": "TEXT",
+                  "x-ms-dynamically-added": true
+                }
+              },
+              "required": [
+                "ActionName",
+                "ParametersJson"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Route_by_action": {
+          "type": "Switch",
+          "runAfter": {},
+          "expression": "@trim(coalesce(triggerBody()?['ActionName'], ''))",
+          "cases": {
+            "Needs_approval_-_ResetPassword": {
+              "case": "ResetPassword",
+              "actions": {
+                "Ask_the_IT_lead_-_ResetPassword": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {},
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "CreateAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalType": "Basic",
+                      "ApprovalCreationInput/title": "Reset password: approval needed",
+                      "ApprovalCreationInput/assignedTo": "@{parameters('Approver email (ab_ApproverEmail)')}",
+                      "ApprovalCreationInput/details": "Action: ResetPassword\nParameters: @{triggerBody()?['ParametersJson']}\nRequested by: @{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}\n\nAfter approval a temporary password is emailed to the manager. It is never shown in chat.\nNothing changes unless you approve.",
+                      "ApprovalCreationInput/enableNotifications": true,
+                      "ApprovalCreationInput/enableReassignment": false
+                    }
+                  }
+                },
+                "Respond_sent_for_approval_-_ResetPassword": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_ResetPassword": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "Sent to the IT lead for approval. Nothing has changed yet.",
+                      "ResultJson": "{\"status\":\"waiting for approval\"}",
+                      "Success": "@true"
+                    }
+                  }
+                },
+                "Respond_with_the_error_-_ResetPassword": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_ResetPassword": [
+                      "Failed",
+                      "TimedOut"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "The approval could not be created, so nothing was changed. Please try again later.",
+                      "ResultJson": "{}",
+                      "Success": "@false"
+                    }
+                  }
+                },
+                "Wait_for_the_IT_lead_-_ResetPassword": {
+                  "type": "OpenApiConnectionWebhook",
+                  "runAfter": {
+                    "Respond_sent_for_approval_-_ResetPassword": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "WaitForAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalName": "@body('Ask_the_IT_lead_-_ResetPassword')?['name']"
+                    }
+                  }
+                },
+                "Approved_-_ResetPassword": {
+                  "type": "If",
+                  "runAfter": {
+                    "Wait_for_the_IT_lead_-_ResetPassword": [
+                      "Succeeded"
+                    ]
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@body('Wait_for_the_IT_lead_-_ResetPassword')?['outcome']",
+                          "Approve"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Run_ResetPassword_with_the_approval": {
+                      "type": "OpenApiConnection",
+                      "runAfter": {},
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                          "operationId": "PerformUnboundAction",
+                          "connectionName": "shared_commondataserviceforapps"
+                        },
+                        "parameters": {
+                          "actionName": "ab_ExecuteAdminAction",
+                          "item/ActionName": "ResetPassword",
+                          "item/ParametersJson": "@triggerBody()?['ParametersJson']",
+                          "item/RequestedBy": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                          "item/ApprovalId": "@{body('Ask_the_IT_lead_-_ResetPassword')?['name']}"
+                        }
+                      },
+                      "runtimeConfiguration": {
+                        "secureData": {
+                          "properties": [
+                            "inputs",
+                            "outputs"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Log_the_rejection_-_ResetPassword": {
+                        "type": "OpenApiConnection",
+                        "runAfter": {},
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                            "operationId": "CreateRecord",
+                            "connectionName": "shared_commondataserviceforapps"
+                          },
+                          "parameters": {
+                            "entityName": "ab_adminactionlogs",
+                            "item/ab_name": "ResetPassword rejected @{utcNow()}",
+                            "item/ab_actionname": "ResetPassword",
+                            "item/ab_target": "@{coalesce(json(triggerBody()?['ParametersJson'])?['userId'], '')}",
+                            "item/ab_requestedby": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                            "item/ab_approvalid": "@{body('Ask_the_IT_lead_-_ResetPassword')?['name']}",
+                            "item/ab_success": false,
+                            "item/ab_message": "The IT lead rejected this request. Nothing was changed."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "Needs_approval_-_AssignRole": {
+              "case": "AssignRole",
+              "actions": {
+                "Ask_the_IT_lead_-_AssignRole": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {},
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "CreateAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalType": "Basic",
+                      "ApprovalCreationInput/title": "Assign a directory role: approval needed",
+                      "ApprovalCreationInput/assignedTo": "@{parameters('Approver email (ab_ApproverEmail)')}",
+                      "ApprovalCreationInput/details": "Action: AssignRole\nParameters: @{triggerBody()?['ParametersJson']}\nRequested by: @{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}\n\nOnly roles on the allow-list can be assigned, scoped to the administrative unit.\nNothing changes unless you approve.",
+                      "ApprovalCreationInput/enableNotifications": true,
+                      "ApprovalCreationInput/enableReassignment": false
+                    }
+                  }
+                },
+                "Respond_sent_for_approval_-_AssignRole": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_AssignRole": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "Sent to the IT lead for approval. Nothing has changed yet.",
+                      "ResultJson": "{\"status\":\"waiting for approval\"}",
+                      "Success": "@true"
+                    }
+                  }
+                },
+                "Respond_with_the_error_-_AssignRole": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_AssignRole": [
+                      "Failed",
+                      "TimedOut"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "The approval could not be created, so nothing was changed. Please try again later.",
+                      "ResultJson": "{}",
+                      "Success": "@false"
+                    }
+                  }
+                },
+                "Wait_for_the_IT_lead_-_AssignRole": {
+                  "type": "OpenApiConnectionWebhook",
+                  "runAfter": {
+                    "Respond_sent_for_approval_-_AssignRole": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "WaitForAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalName": "@body('Ask_the_IT_lead_-_AssignRole')?['name']"
+                    }
+                  }
+                },
+                "Approved_-_AssignRole": {
+                  "type": "If",
+                  "runAfter": {
+                    "Wait_for_the_IT_lead_-_AssignRole": [
+                      "Succeeded"
+                    ]
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@body('Wait_for_the_IT_lead_-_AssignRole')?['outcome']",
+                          "Approve"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Run_AssignRole_with_the_approval": {
+                      "type": "OpenApiConnection",
+                      "runAfter": {},
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                          "operationId": "PerformUnboundAction",
+                          "connectionName": "shared_commondataserviceforapps"
+                        },
+                        "parameters": {
+                          "actionName": "ab_ExecuteAdminAction",
+                          "item/ActionName": "AssignRole",
+                          "item/ParametersJson": "@triggerBody()?['ParametersJson']",
+                          "item/RequestedBy": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                          "item/ApprovalId": "@{body('Ask_the_IT_lead_-_AssignRole')?['name']}"
+                        }
+                      },
+                      "runtimeConfiguration": {
+                        "secureData": {
+                          "properties": [
+                            "inputs",
+                            "outputs"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Log_the_rejection_-_AssignRole": {
+                        "type": "OpenApiConnection",
+                        "runAfter": {},
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                            "operationId": "CreateRecord",
+                            "connectionName": "shared_commondataserviceforapps"
+                          },
+                          "parameters": {
+                            "entityName": "ab_adminactionlogs",
+                            "item/ab_name": "AssignRole rejected @{utcNow()}",
+                            "item/ab_actionname": "AssignRole",
+                            "item/ab_target": "@{coalesce(json(triggerBody()?['ParametersJson'])?['userId'], '')}",
+                            "item/ab_requestedby": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                            "item/ab_approvalid": "@{body('Ask_the_IT_lead_-_AssignRole')?['name']}",
+                            "item/ab_success": false,
+                            "item/ab_message": "The IT lead rejected this request. Nothing was changed."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "Needs_approval_-_RemoveRole": {
+              "case": "RemoveRole",
+              "actions": {
+                "Ask_the_IT_lead_-_RemoveRole": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {},
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "CreateAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalType": "Basic",
+                      "ApprovalCreationInput/title": "Remove a directory role: approval needed",
+                      "ApprovalCreationInput/assignedTo": "@{parameters('Approver email (ab_ApproverEmail)')}",
+                      "ApprovalCreationInput/details": "Action: RemoveRole\nParameters: @{triggerBody()?['ParametersJson']}\nRequested by: @{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}\n\nOnly allow-listed roles can be removed.\nNothing changes unless you approve.",
+                      "ApprovalCreationInput/enableNotifications": true,
+                      "ApprovalCreationInput/enableReassignment": false
+                    }
+                  }
+                },
+                "Respond_sent_for_approval_-_RemoveRole": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_RemoveRole": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "Sent to the IT lead for approval. Nothing has changed yet.",
+                      "ResultJson": "{\"status\":\"waiting for approval\"}",
+                      "Success": "@true"
+                    }
+                  }
+                },
+                "Respond_with_the_error_-_RemoveRole": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_RemoveRole": [
+                      "Failed",
+                      "TimedOut"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "The approval could not be created, so nothing was changed. Please try again later.",
+                      "ResultJson": "{}",
+                      "Success": "@false"
+                    }
+                  }
+                },
+                "Wait_for_the_IT_lead_-_RemoveRole": {
+                  "type": "OpenApiConnectionWebhook",
+                  "runAfter": {
+                    "Respond_sent_for_approval_-_RemoveRole": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "WaitForAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalName": "@body('Ask_the_IT_lead_-_RemoveRole')?['name']"
+                    }
+                  }
+                },
+                "Approved_-_RemoveRole": {
+                  "type": "If",
+                  "runAfter": {
+                    "Wait_for_the_IT_lead_-_RemoveRole": [
+                      "Succeeded"
+                    ]
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@body('Wait_for_the_IT_lead_-_RemoveRole')?['outcome']",
+                          "Approve"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Run_RemoveRole_with_the_approval": {
+                      "type": "OpenApiConnection",
+                      "runAfter": {},
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                          "operationId": "PerformUnboundAction",
+                          "connectionName": "shared_commondataserviceforapps"
+                        },
+                        "parameters": {
+                          "actionName": "ab_ExecuteAdminAction",
+                          "item/ActionName": "RemoveRole",
+                          "item/ParametersJson": "@triggerBody()?['ParametersJson']",
+                          "item/RequestedBy": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                          "item/ApprovalId": "@{body('Ask_the_IT_lead_-_RemoveRole')?['name']}"
+                        }
+                      },
+                      "runtimeConfiguration": {
+                        "secureData": {
+                          "properties": [
+                            "inputs",
+                            "outputs"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Log_the_rejection_-_RemoveRole": {
+                        "type": "OpenApiConnection",
+                        "runAfter": {},
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                            "operationId": "CreateRecord",
+                            "connectionName": "shared_commondataserviceforapps"
+                          },
+                          "parameters": {
+                            "entityName": "ab_adminactionlogs",
+                            "item/ab_name": "RemoveRole rejected @{utcNow()}",
+                            "item/ab_actionname": "RemoveRole",
+                            "item/ab_target": "@{coalesce(json(triggerBody()?['ParametersJson'])?['userId'], '')}",
+                            "item/ab_requestedby": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                            "item/ab_approvalid": "@{body('Ask_the_IT_lead_-_RemoveRole')?['name']}",
+                            "item/ab_success": false,
+                            "item/ab_message": "The IT lead rejected this request. Nothing was changed."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "Needs_approval_-_RevokeSessions": {
+              "case": "RevokeSessions",
+              "actions": {
+                "Ask_the_IT_lead_-_RevokeSessions": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {},
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "CreateAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalType": "Basic",
+                      "ApprovalCreationInput/title": "Sign out everywhere: approval needed",
+                      "ApprovalCreationInput/assignedTo": "@{parameters('Approver email (ab_ApproverEmail)')}",
+                      "ApprovalCreationInput/details": "Action: RevokeSessions\nParameters: @{triggerBody()?['ParametersJson']}\nRequested by: @{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}\n\nAll refresh tokens and session cookies are revoked.\nNothing changes unless you approve.",
+                      "ApprovalCreationInput/enableNotifications": true,
+                      "ApprovalCreationInput/enableReassignment": false
+                    }
+                  }
+                },
+                "Respond_sent_for_approval_-_RevokeSessions": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_RevokeSessions": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "Sent to the IT lead for approval. Nothing has changed yet.",
+                      "ResultJson": "{\"status\":\"waiting for approval\"}",
+                      "Success": "@true"
+                    }
+                  }
+                },
+                "Respond_with_the_error_-_RevokeSessions": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_RevokeSessions": [
+                      "Failed",
+                      "TimedOut"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "The approval could not be created, so nothing was changed. Please try again later.",
+                      "ResultJson": "{}",
+                      "Success": "@false"
+                    }
+                  }
+                },
+                "Wait_for_the_IT_lead_-_RevokeSessions": {
+                  "type": "OpenApiConnectionWebhook",
+                  "runAfter": {
+                    "Respond_sent_for_approval_-_RevokeSessions": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "WaitForAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalName": "@body('Ask_the_IT_lead_-_RevokeSessions')?['name']"
+                    }
+                  }
+                },
+                "Approved_-_RevokeSessions": {
+                  "type": "If",
+                  "runAfter": {
+                    "Wait_for_the_IT_lead_-_RevokeSessions": [
+                      "Succeeded"
+                    ]
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@body('Wait_for_the_IT_lead_-_RevokeSessions')?['outcome']",
+                          "Approve"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Run_RevokeSessions_with_the_approval": {
+                      "type": "OpenApiConnection",
+                      "runAfter": {},
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                          "operationId": "PerformUnboundAction",
+                          "connectionName": "shared_commondataserviceforapps"
+                        },
+                        "parameters": {
+                          "actionName": "ab_ExecuteAdminAction",
+                          "item/ActionName": "RevokeSessions",
+                          "item/ParametersJson": "@triggerBody()?['ParametersJson']",
+                          "item/RequestedBy": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                          "item/ApprovalId": "@{body('Ask_the_IT_lead_-_RevokeSessions')?['name']}"
+                        }
+                      },
+                      "runtimeConfiguration": {
+                        "secureData": {
+                          "properties": [
+                            "inputs",
+                            "outputs"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Log_the_rejection_-_RevokeSessions": {
+                        "type": "OpenApiConnection",
+                        "runAfter": {},
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                            "operationId": "CreateRecord",
+                            "connectionName": "shared_commondataserviceforapps"
+                          },
+                          "parameters": {
+                            "entityName": "ab_adminactionlogs",
+                            "item/ab_name": "RevokeSessions rejected @{utcNow()}",
+                            "item/ab_actionname": "RevokeSessions",
+                            "item/ab_target": "@{coalesce(json(triggerBody()?['ParametersJson'])?['userId'], '')}",
+                            "item/ab_requestedby": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                            "item/ab_approvalid": "@{body('Ask_the_IT_lead_-_RevokeSessions')?['name']}",
+                            "item/ab_success": false,
+                            "item/ab_message": "The IT lead rejected this request. Nothing was changed."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "Needs_approval_-_DisableUser": {
+              "case": "DisableUser",
+              "actions": {
+                "Ask_the_IT_lead_-_DisableUser": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {},
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "CreateAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalType": "Basic",
+                      "ApprovalCreationInput/title": "Block sign-in: approval needed",
+                      "ApprovalCreationInput/assignedTo": "@{parameters('Approver email (ab_ApproverEmail)')}",
+                      "ApprovalCreationInput/details": "Action: DisableUser\nParameters: @{triggerBody()?['ParametersJson']}\nRequested by: @{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}\n\nThe user can no longer sign in.\nNothing changes unless you approve.",
+                      "ApprovalCreationInput/enableNotifications": true,
+                      "ApprovalCreationInput/enableReassignment": false
+                    }
+                  }
+                },
+                "Respond_sent_for_approval_-_DisableUser": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_DisableUser": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "Sent to the IT lead for approval. Nothing has changed yet.",
+                      "ResultJson": "{\"status\":\"waiting for approval\"}",
+                      "Success": "@true"
+                    }
+                  }
+                },
+                "Respond_with_the_error_-_DisableUser": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_DisableUser": [
+                      "Failed",
+                      "TimedOut"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "The approval could not be created, so nothing was changed. Please try again later.",
+                      "ResultJson": "{}",
+                      "Success": "@false"
+                    }
+                  }
+                },
+                "Wait_for_the_IT_lead_-_DisableUser": {
+                  "type": "OpenApiConnectionWebhook",
+                  "runAfter": {
+                    "Respond_sent_for_approval_-_DisableUser": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "WaitForAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalName": "@body('Ask_the_IT_lead_-_DisableUser')?['name']"
+                    }
+                  }
+                },
+                "Approved_-_DisableUser": {
+                  "type": "If",
+                  "runAfter": {
+                    "Wait_for_the_IT_lead_-_DisableUser": [
+                      "Succeeded"
+                    ]
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@body('Wait_for_the_IT_lead_-_DisableUser')?['outcome']",
+                          "Approve"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Run_DisableUser_with_the_approval": {
+                      "type": "OpenApiConnection",
+                      "runAfter": {},
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                          "operationId": "PerformUnboundAction",
+                          "connectionName": "shared_commondataserviceforapps"
+                        },
+                        "parameters": {
+                          "actionName": "ab_ExecuteAdminAction",
+                          "item/ActionName": "DisableUser",
+                          "item/ParametersJson": "@triggerBody()?['ParametersJson']",
+                          "item/RequestedBy": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                          "item/ApprovalId": "@{body('Ask_the_IT_lead_-_DisableUser')?['name']}"
+                        }
+                      },
+                      "runtimeConfiguration": {
+                        "secureData": {
+                          "properties": [
+                            "inputs",
+                            "outputs"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Log_the_rejection_-_DisableUser": {
+                        "type": "OpenApiConnection",
+                        "runAfter": {},
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                            "operationId": "CreateRecord",
+                            "connectionName": "shared_commondataserviceforapps"
+                          },
+                          "parameters": {
+                            "entityName": "ab_adminactionlogs",
+                            "item/ab_name": "DisableUser rejected @{utcNow()}",
+                            "item/ab_actionname": "DisableUser",
+                            "item/ab_target": "@{coalesce(json(triggerBody()?['ParametersJson'])?['userId'], '')}",
+                            "item/ab_requestedby": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                            "item/ab_approvalid": "@{body('Ask_the_IT_lead_-_DisableUser')?['name']}",
+                            "item/ab_success": false,
+                            "item/ab_message": "The IT lead rejected this request. Nothing was changed."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "Needs_approval_-_OffboardUser": {
+              "case": "OffboardUser",
+              "actions": {
+                "Ask_the_IT_lead_-_OffboardUser": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {},
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "CreateAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalType": "Basic",
+                      "ApprovalCreationInput/title": "Offboard a leaver: approval needed",
+                      "ApprovalCreationInput/assignedTo": "@{parameters('Approver email (ab_ApproverEmail)')}",
+                      "ApprovalCreationInput/details": "Action: OffboardUser\nParameters: @{triggerBody()?['ParametersJson']}\nRequested by: @{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}\n\nBlock sign-in, revoke sessions, remove changeable groups and direct licences. Nothing is deleted.\nNothing changes unless you approve.",
+                      "ApprovalCreationInput/enableNotifications": true,
+                      "ApprovalCreationInput/enableReassignment": false
+                    }
+                  }
+                },
+                "Respond_sent_for_approval_-_OffboardUser": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_OffboardUser": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "Sent to the IT lead for approval. Nothing has changed yet.",
+                      "ResultJson": "{\"status\":\"waiting for approval\"}",
+                      "Success": "@true"
+                    }
+                  }
+                },
+                "Respond_with_the_error_-_OffboardUser": {
+                  "type": "Response",
+                  "kind": "Skills",
+                  "runAfter": {
+                    "Ask_the_IT_lead_-_OffboardUser": [
+                      "Failed",
+                      "TimedOut"
+                    ]
+                  },
+                  "inputs": {
+                    "statusCode": 200,
+                    "schema": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "properties": {
+                        "Message": {
+                          "title": "Message",
+                          "description": "What happened, in one or two sentences, to tell the user.",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "ResultJson": {
+                          "title": "ResultJson",
+                          "description": "Details from the admin action as JSON (never contains a password).",
+                          "type": "string",
+                          "x-ms-content-hint": "TEXT",
+                          "x-ms-dynamically-added": true
+                        },
+                        "Success": {
+                          "title": "Success",
+                          "description": "True when the action worked (or was sent for approval).",
+                          "type": "boolean",
+                          "x-ms-content-hint": "BOOLEAN",
+                          "x-ms-dynamically-added": true
+                        }
+                      }
+                    },
+                    "body": {
+                      "Message": "The approval could not be created, so nothing was changed. Please try again later.",
+                      "ResultJson": "{}",
+                      "Success": "@false"
+                    }
+                  }
+                },
+                "Wait_for_the_IT_lead_-_OffboardUser": {
+                  "type": "OpenApiConnectionWebhook",
+                  "runAfter": {
+                    "Respond_sent_for_approval_-_OffboardUser": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                      "operationId": "WaitForAnApproval",
+                      "connectionName": "shared_approvals"
+                    },
+                    "parameters": {
+                      "approvalName": "@body('Ask_the_IT_lead_-_OffboardUser')?['name']"
+                    }
+                  }
+                },
+                "Approved_-_OffboardUser": {
+                  "type": "If",
+                  "runAfter": {
+                    "Wait_for_the_IT_lead_-_OffboardUser": [
+                      "Succeeded"
+                    ]
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@body('Wait_for_the_IT_lead_-_OffboardUser')?['outcome']",
+                          "Approve"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Run_OffboardUser_with_the_approval": {
+                      "type": "OpenApiConnection",
+                      "runAfter": {},
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                          "operationId": "PerformUnboundAction",
+                          "connectionName": "shared_commondataserviceforapps"
+                        },
+                        "parameters": {
+                          "actionName": "ab_ExecuteAdminAction",
+                          "item/ActionName": "OffboardUser",
+                          "item/ParametersJson": "@triggerBody()?['ParametersJson']",
+                          "item/RequestedBy": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                          "item/ApprovalId": "@{body('Ask_the_IT_lead_-_OffboardUser')?['name']}"
+                        }
+                      },
+                      "runtimeConfiguration": {
+                        "secureData": {
+                          "properties": [
+                            "inputs",
+                            "outputs"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Log_the_rejection_-_OffboardUser": {
+                        "type": "OpenApiConnection",
+                        "runAfter": {},
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                            "operationId": "CreateRecord",
+                            "connectionName": "shared_commondataserviceforapps"
+                          },
+                          "parameters": {
+                            "entityName": "ab_adminactionlogs",
+                            "item/ab_name": "OffboardUser rejected @{utcNow()}",
+                            "item/ab_actionname": "OffboardUser",
+                            "item/ab_target": "@{coalesce(json(triggerBody()?['ParametersJson'])?['userId'], '')}",
+                            "item/ab_requestedby": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}",
+                            "item/ab_approvalid": "@{body('Ask_the_IT_lead_-_OffboardUser')?['name']}",
+                            "item/ab_success": false,
+                            "item/ab_message": "The IT lead rejected this request. Nothing was changed."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "actions": {
+              "Run_the_action": {
+                "type": "OpenApiConnection",
+                "runAfter": {},
+                "inputs": {
+                  "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                    "operationId": "PerformUnboundAction",
+                    "connectionName": "shared_commondataserviceforapps"
+                  },
+                  "parameters": {
+                    "actionName": "ab_ExecuteAdminAction",
+                    "item/ActionName": "@{trim(triggerBody()?['ActionName'])}",
+                    "item/ParametersJson": "@triggerBody()?['ParametersJson']",
+                    "item/RequestedBy": "@{coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], triggerBody()?['RequestedBy'], 'IT Admin Assistant agent')}"
+                  }
+                }
+              },
+              "Respond_to_the_agent": {
+                "type": "Response",
+                "kind": "Skills",
+                "runAfter": {
+                  "Run_the_action": [
+                    "Succeeded"
+                  ]
+                },
+                "inputs": {
+                  "statusCode": 200,
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": {},
+                    "properties": {
+                      "Message": {
+                        "title": "Message",
+                        "description": "What happened, in one or two sentences, to tell the user.",
+                        "type": "string",
+                        "x-ms-content-hint": "TEXT",
+                        "x-ms-dynamically-added": true
+                      },
+                      "ResultJson": {
+                        "title": "ResultJson",
+                        "description": "Details from the admin action as JSON (never contains a password).",
+                        "type": "string",
+                        "x-ms-content-hint": "TEXT",
+                        "x-ms-dynamically-added": true
+                      },
+                      "Success": {
+                        "title": "Success",
+                        "description": "True when the action worked (or was sent for approval).",
+                        "type": "boolean",
+                        "x-ms-content-hint": "BOOLEAN",
+                        "x-ms-dynamically-added": true
+                      }
+                    }
+                  },
+                  "body": {
+                    "Message": "@{body('Run_the_action')?['Message']}",
+                    "ResultJson": "@{body('Run_the_action')?['ResultJson']}",
+                    "Success": "@body('Run_the_action')?['Success']"
+                  }
+                }
+              },
+              "Respond_with_the_error": {
+                "type": "Response",
+                "kind": "Skills",
+                "runAfter": {
+                  "Run_the_action": [
+                    "Failed",
+                    "TimedOut"
+                  ]
+                },
+                "inputs": {
+                  "statusCode": 200,
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": {},
+                    "properties": {
+                      "Message": {
+                        "title": "Message",
+                        "description": "What happened, in one or two sentences, to tell the user.",
+                        "type": "string",
+                        "x-ms-content-hint": "TEXT",
+                        "x-ms-dynamically-added": true
+                      },
+                      "ResultJson": {
+                        "title": "ResultJson",
+                        "description": "Details from the admin action as JSON (never contains a password).",
+                        "type": "string",
+                        "x-ms-content-hint": "TEXT",
+                        "x-ms-dynamically-added": true
+                      },
+                      "Success": {
+                        "title": "Success",
+                        "description": "True when the action worked (or was sent for approval).",
+                        "type": "boolean",
+                        "x-ms-content-hint": "BOOLEAN",
+                        "x-ms-dynamically-added": true
+                      }
+                    }
+                  },
+                  "body": {
+                    "Message": "The admin action could not run, so nothing was changed. @{coalesce(outputs('Run_the_action')?['body']?['error']?['message'], 'Please try again later.')}",
+                    "ResultJson": "{}",
+                    "Success": "@false"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "outputs": {},
+      "description": "Agent flow for IT Admin Assistant: runs any of the 33 admin operations of the Onboarding Agent plugin (Custom API ab_ExecuteAdminAction). Risky operations go to the IT lead for approval first."
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}
