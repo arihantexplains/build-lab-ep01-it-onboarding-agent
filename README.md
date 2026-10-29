@@ -79,7 +79,7 @@ The short version is below. The full walkthrough, with every field, is in [docs/
 - **Secrets stay out of code.** Every ID and secret comes from environment variables, the secret from Key Vault. This repo has placeholders only.
 - **Never use production users.** Test only with made-up people in a demo tenant. Rotate or delete the app credential when you're done.
 
-More in [docs/security.md](docs/security.md).
+More in [docs/security.md](docs/security.md). To report a security problem, see [SECURITY.md](SECURITY.md).
 
 ## How this was built
 
